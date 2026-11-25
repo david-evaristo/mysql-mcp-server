@@ -10,13 +10,14 @@ Tools depend on these classes, not on the aiomysql driver directly.
 import asyncio
 import re
 import time
+from collections.abc import AsyncIterator
 from contextlib import AbstractAsyncContextManager, asynccontextmanager
-from typing import Any, AsyncIterator
+from typing import Any
 
 import aiomysql
 
 from .exceptions import DatabaseError, QueryTimeoutError
-from .query_guard import add_limit, SYSTEM_DATABASES
+from .query_guard import SYSTEM_DATABASES, add_limit
 
 _IDENTIFIER_RE = re.compile(r"^[A-Za-z0-9_$]+$")
 
@@ -54,9 +55,8 @@ class BaseRepository:
         @asynccontextmanager
         async def _ctx() -> AsyncIterator[aiomysql.Cursor]:
             """Acquire a connection, open a cursor, and yield it."""
-            async with self._pool.acquire() as conn:
-                async with conn.cursor(cursor_class) as cur:
-                    yield cur
+            async with self._pool.acquire() as conn, conn.cursor(cursor_class) as cur:
+                yield cur
         return _ctx()
 
 

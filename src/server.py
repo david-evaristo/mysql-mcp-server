@@ -8,8 +8,9 @@ from src.logging_config import configure_logging
 
 if __name__ == "__main__":
     configure_logging()
+    logger = logging.getLogger("mysql-mcp")
     transport = get_transport()
-    logging.info("MCP transport: %s", transport)
+    logger.info("MCP transport: %s", transport)
     if transport == "http":
         host = os.getenv("MCP_HOST", "127.0.0.1")
         port = int(os.getenv("PORT", "8000"))

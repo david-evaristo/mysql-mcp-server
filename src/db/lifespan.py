@@ -15,7 +15,7 @@ import aiomysql
 from fastmcp import FastMCP
 
 from ..config import DatabaseConfig
-from .repository import SchemaRepository, QueryRepository
+from .repository import QueryRepository, SchemaRepository
 from .secure_repository import SecureQueryRepository
 
 logger = logging.getLogger("mysql-mcp")
@@ -41,23 +41,32 @@ class ConnectionPool:
             return self._pool
         async with self._lock:
             if self._pool is None:
-                logger.info("Connecting to the MySQL cluster via Teleport proxy (lazy)...")
-                pool = await aiomysql.create_pool(  # type: ignore[misc]
-                    host=self.config.host,
-                    port=self.config.port,
-                    user=self.config.user,
-                    db=None,
-                    charset="utf8mb4",
-                    autocommit=True,
-                    minsize=self.config.pool_minsize,
-                    maxsize=self.config.pool_maxsize,
-                    connect_timeout=self.config.connect_timeout,
-                    init_command="SET SESSION TRANSACTION READ ONLY",
-                )
+                pool_kwargs: dict[str, object] = {
+                    "host": self.config.host,
+                    "port": self.config.port,
+                    "user": self.config.user,
+                    "db": self.config.database,
+                    "charset": "utf8mb4",
+                    "autocommit": True,
+                    "minsize": self.config.pool_minsize,
+                    "maxsize": self.config.pool_maxsize,
+                    "connect_timeout": self.config.connect_timeout,
+                    "init_command": "SET SESSION TRANSACTION READ ONLY",
+                }
+
+                if self.config.mode == "direct":
+                    logger.info("Connecting to MySQL cluster directly (lazy)...")
+                    pool_kwargs["password"] = self.config.password
+                    if self.config.ssl_ca:
+                        import ssl
+                        pool_kwargs["ssl"] = ssl.create_default_context(cafile=self.config.ssl_ca)
+                else:
+                    logger.info("Connecting to the MySQL cluster via Teleport proxy (lazy)...")
+
+                pool = await aiomysql.create_pool(**pool_kwargs)  # type: ignore[misc]
                 try:
-                    async with pool.acquire() as _conn:
-                        async with _conn.cursor() as _cur:
-                            await _cur.execute("SELECT 1")
+                    async with pool.acquire() as _conn, _conn.cursor() as _cur:
+                        await _cur.execute("SELECT 1")
                 except Exception:
                     pool.close()
                     try:
@@ -66,7 +75,7 @@ class ConnectionPool:
                         logger.warning("Pool cleanup timed out during failed validation")
                     raise
                 self._pool = pool
-                logger.info("Connection pool created (teleport-proxy, session=read-only).")
+                logger.info(f"Connection pool created ({self.config.mode}, session=read-only).")
         return self._pool
 
     async def close(self) -> None:

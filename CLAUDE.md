@@ -77,9 +77,13 @@ Resources (`src/resources/mysql.py`): `schema://databases`, `schema://{database}
 
 | Variable | Default | Purpose |
 |---|---|---|
-| `MYSQL_HOST` | — | Teleport proxy host — `127.0.0.1` (required) |
-| `MYSQL_PORT` | `54855` | Porta do `tsh db proxy` |
+| `MYSQL_CONNECTION_MODE` | `teleport` | `teleport` (tunnel local) or `direct` (MySQL direto) |
+| `MYSQL_HOST` | — | Host do banco ou proxy local — `127.0.0.1` em teleport (required) |
+| `MYSQL_PORT` | `54855` (teleport) / `3306` (direct) | Porta MySQL |
 | `MYSQL_USER` | — | Required |
+| `MYSQL_PASSWORD` | — | Required when `MYSQL_CONNECTION_MODE=direct` |
+| `MYSQL_DATABASE` | — | Optional default database |
+| `MYSQL_SSL_CA` | — | Optional CA file path for TLS in direct mode |
 | `MCP_MAX_ROWS` | `500` | Hard cap on rows returned |
 | `MCP_TRANSPORT` | `http` | `stdio` or `http` |
 | `MCP_QUERY_TIMEOUT` | `30` | Seconds before query is cancelled |

@@ -4,12 +4,12 @@ MCP resources — explicitly registered via register_resources(mcp).
 Resources delegate to SchemaRepository — no coupling to the driver.
 """
 import re
+
 from fastmcp import Context, FastMCP
 
-from src.handler import run_tool
 from src.db import get_schema_repo
+from src.handler import run_tool
 from src.logging_config import logger
-
 
 _IDENTIFIER_RE = re.compile(r"^[A-Za-z0-9_$]+$")
 

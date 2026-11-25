@@ -8,8 +8,8 @@ to know validations exist — it can be tested in full isolation.
 import re
 from typing import Any
 
+from .query_guard import QueryValidator, build_default_validators, validate_query
 from .repository import QueryRepository
-from .query_guard import validate_query, QueryValidator, build_default_validators
 
 _IDENTIFIER_RE = re.compile(r"^[A-Za-z0-9_$]+$")
 

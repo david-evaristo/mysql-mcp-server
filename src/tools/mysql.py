@@ -7,10 +7,10 @@ from typing import Any
 
 from fastmcp import Context, FastMCP
 
-from src.handler import run_tool
-from src.db import get_schema_repo, get_query_repo
-from src.logging_config import logger
 from src import audit
+from src.db import get_query_repo, get_schema_repo
+from src.handler import run_tool
+from src.logging_config import logger
 
 
 def register_tools(mcp: FastMCP) -> None:

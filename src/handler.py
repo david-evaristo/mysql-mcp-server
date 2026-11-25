@@ -6,7 +6,8 @@ delegates to a single place instead of repeating the same 3-branch block.
 """
 import inspect
 import logging
-from typing import Awaitable, TypeVar
+from collections.abc import Awaitable
+from typing import TypeVar
 
 from src.db.exceptions import DatabaseError, QueryTimeoutError
 from src.rate_limiter import RateLimiter
@@ -43,7 +44,7 @@ async def run_tool(
         except RuntimeError:
             if inspect.isawaitable(coro):
                 try:
-                    coro.close()  # type: ignore[union-attr]
+                    coro.close()  # type: ignore[attr-defined,union-attr]
                 except AttributeError:
                     pass
             raise

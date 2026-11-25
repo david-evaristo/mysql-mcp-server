@@ -3,10 +3,11 @@
     "mysql": {
       "command": "uvx",
       "args": [
-        "--from", "git+https://github.com/<owner>/<repo>.git@<tag>",
+        "--from", "git+https://github.com/david-evaristo/mysql-mcp-server.git@v1.1.0",
         "mysql-mcp-server"
       ],
       "env": {
+        "MYSQL_CONNECTION_MODE": "teleport",
         "MYSQL_HOST": "127.0.0.1",
         "MYSQL_PORT": "54855",
         "MYSQL_USER": "db-readonly"

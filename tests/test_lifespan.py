@@ -1,11 +1,12 @@
 # tests/test_lifespan.py
 """Tests for src/db/lifespan.py — pool lifecycle, double-checked locking, and AppContext."""
 import asyncio
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
-from .conftest import make_counting_pool
+
 from src.config import DatabaseConfig
-from src.db.lifespan import ConnectionPool, AppContext
+from src.db.lifespan import AppContext, ConnectionPool
+
+from .conftest import make_counting_pool
 
 
 def _make_config() -> DatabaseConfig:
@@ -58,7 +59,7 @@ class TestConnectionPoolDoubleCheckedLocking:
             results = await asyncio.gather(*[cp.acquire() for _ in range(10)])
 
         assert counter.count == 1, f"Expected 1 pool creation, got {counter.count}"
-        assert len(set(id(r) for r in results)) == 1
+        assert len({id(r) for r in results}) == 1
 
     async def test_acquire_fast_path_without_lock(self):
         config = _make_config()
@@ -74,7 +75,7 @@ class TestConnectionPoolInitCommand:
         config = DatabaseConfig(host="h", port=54855, user="u")
         cp = ConnectionPool(config=config)
 
-        side_effect, counter = make_counting_pool()
+        side_effect, _counter = make_counting_pool()
         captured = {}
 
         async def capturing_side_effect(**kwargs):
@@ -87,6 +88,52 @@ class TestConnectionPoolInitCommand:
         assert captured.get("init_command") == "SET SESSION TRANSACTION READ ONLY"
         assert "password" not in captured
         assert "ssl" not in captured
+
+    async def test_create_pool_direct_mode_receives_password_and_database(self):
+        config = DatabaseConfig(
+            mode="direct", host="h", port=3306, user="u", password="secret_password", database="testdb"
+        )
+        cp = ConnectionPool(config=config)
+
+        side_effect, _counter = make_counting_pool()
+        captured = {}
+
+        async def capturing_side_effect(**kwargs):
+            captured.update(kwargs)
+            return await side_effect(**kwargs)
+
+        with patch("src.db.lifespan.aiomysql.create_pool", side_effect=capturing_side_effect):
+            await cp.acquire()
+
+        assert captured.get("init_command") == "SET SESSION TRANSACTION READ ONLY"
+        assert captured.get("password") == "secret_password"
+        assert captured.get("db") == "testdb"
+        assert captured.get("port") == 3306
+
+    async def test_create_pool_direct_mode_with_ssl(self, tmp_path):
+        ca_file = tmp_path / "ca.pem"
+        ca_file.write_text("dummy ca")
+        config = DatabaseConfig(
+            mode="direct", host="h", port=3306, user="u", password="secret_password", ssl_ca=str(ca_file)
+        )
+        cp = ConnectionPool(config=config)
+
+        side_effect, _counter = make_counting_pool()
+        captured = {}
+
+        async def capturing_side_effect(**kwargs):
+            captured.update(kwargs)
+            return await side_effect(**kwargs)
+
+        mock_ssl_ctx = MagicMock()
+        with (
+            patch("ssl.create_default_context", return_value=mock_ssl_ctx) as mock_create_ctx,
+            patch("src.db.lifespan.aiomysql.create_pool", side_effect=capturing_side_effect),
+        ):
+            await cp.acquire()
+
+        mock_create_ctx.assert_called_once_with(cafile=str(ca_file))
+        assert captured.get("ssl") is mock_ssl_ctx
 
 
 class TestAppContextRaceCondition:
@@ -101,5 +148,5 @@ class TestAppContextRaceCondition:
         ctx = AppContext(_pool=cp, _config=config)
         repos = await asyncio.gather(*[ctx.get_schema_repo() for _ in range(10)])
 
-        assert len(set(id(r) for r in repos)) == 1
+        assert len({id(r) for r in repos}) == 1
         assert cp.acquire.call_count == 1
