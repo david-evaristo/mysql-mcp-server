@@ -1,0 +1,16 @@
+{
+  "mcpServers": {
+    "mysql": {
+      "command": "uvx",
+      "args": [
+        "--from", "git+https://github.com/<owner>/<repo>.git@<tag>",
+        "mysql-mcp-server"
+      ],
+      "env": {
+        "MYSQL_HOST": "127.0.0.1",
+        "MYSQL_PORT": "54855",
+        "MYSQL_USER": "db-readonly"
+      }
+    }
+  }
+}

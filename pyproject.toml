@@ -1,0 +1,33 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "mysql-mcp-server"
+version = "1.0.0"
+description = "Read-only MCP server for querying a MySQL cluster via Teleport Database Access"
+requires-python = ">=3.10"
+dependencies = [
+    "fastmcp==3.4.4",
+    "aiomysql==0.3.2",
+    "python-dotenv==1.2.2",
+    "requests==2.34.2",
+    "sqlparse==0.5.5",  # pin: classificação de statements impacta segurança — verificar testes ao upgradear
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest==9.1.1",
+    "pytest-asyncio==1.4.0",
+    "pytest-cov==7.1.0",
+    "ruff==0.16.0",
+    "mypy==2.3.0",
+    "bandit==1.9.4",
+    "safety==3.8.1",
+]
+
+[project.scripts]
+mysql-mcp-server = "src.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src"]
